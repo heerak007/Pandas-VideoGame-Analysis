@@ -20,6 +20,7 @@ file_to_load = "Resources/purchase_data.csv"
 # Read purchasing file and store into pandas data frame
 GameDF = pd.read_csv(file_to_load)
 
+# Printing the count and data types to see what is an object vs float vs int
 print(f'{GameDF.count()}\n')
 print(GameDF.dtypes)
 
@@ -134,9 +135,6 @@ GameDF.head()
 
 ## Player Count
 
-* Display the total number of players
-
-
 
 ```python
 TotalPlayers = GameDF["SN"].unique()
@@ -152,25 +150,15 @@ len(TotalPlayers)
 
 ## Purchasing Analysis (Total)
 
-* Run basic calculations to obtain number of unique items, average price, etc.
-
-
-* Create a summary data frame to hold the results
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display the summary data frame
-
-
 
 ```python
+# Taking original DataFrame and condensing it(unique values, or groupby) based on the goal
 Unique = GameDF["Item ID"].unique()
 Average = GameDF["Price"].mean()
 NumofPur = len(GameDF["Purchase ID"])
 TotalRev = GameDF["Price"].sum()
 
+#creating the dataframe for the values calculated above
 SumTotal = pd.DataFrame([{
             'Unique Items':len(Unique), 
             'Avg Price':Average, 
@@ -178,14 +166,17 @@ SumTotal = pd.DataFrame([{
             "Total Revenue":TotalRev
             }])
 
+# Possible way to do formats like below, keeping it for future reference
 # SumTotal.style.format({
 #             'Avg price': "${:,.2f}",  
 #             'Total Revenue': '${:,.2f}'
 #             })
 
+# Using the mapping function to format the values to desired result
 SumTotal["Avg Price"] = SumTotal["Avg Price"].map("${:.2f}".format)
 SumTotal["Total Revenue"] = SumTotal["Total Revenue"].map("${:.2f}".format)
 
+#organizing the data columns
 SumTotal = SumTotal[["Unique Items","Avg Price","Number of Purchases","Total Revenue"]]
 
 SumTotal
@@ -234,26 +225,38 @@ SumTotal
 
 ## Gender Demographics
 
-* Run basic calculations to obtain number of unique items, average price, etc.
-
-
-* Create a summary data frame to hold the results
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display the summary data frame
-
-
 
 ```python
+# Taking original DataFrame and condensing it(unique values, or groupby) based on the goal
+# Important to note of using count() vs value_counts(). count() can be used for counting the grouped by DF,
+# Whereas value_counts() should be used from a NON-groupedby DF, such as the original DF
 GenderVCount = GameDF["Gender"].value_counts()
 GenderPercent = GenderVCount/GenderVCount.sum()
 
-GenderDemo = pd.DataFrame({"Count": GenderVCount,
-                        "Percentage": GenderPercent}) 
+# Finding the non repetative values and its associated calculations
+UniqueGender = GameDF.drop_duplicates("SN")
+UniqueGenCount = UniqueGender["Gender"].value_counts()
+UniquePercent = UniqueGenCount/len(TotalPlayers)
+
+# Differenciating the repeat buys based on the total buys
+RepeatBuy = GenderVCount-UniqueGenCount
+RepeatPercent = RepeatBuy/GenderVCount
+
+GenderDemo = pd.DataFrame({"Total Purchase Count": GenderVCount,
+                            "Percentage": GenderPercent,
+                            "Unique Player Count": UniqueGenCount,
+                            "Unique Percentage": UniquePercent,
+                            "Repeat Buy": RepeatBuy,
+                            "Repeat Percentage": RepeatPercent
+
+                          
+                          }) 
 GenderDemo["Percentage"] = GenderDemo["Percentage"].map('{:.1%}'.format)
+GenderDemo["Unique Percentage"] = GenderDemo["Unique Percentage"].map('{:.1%}'.format)
+GenderDemo["Repeat Percentage"] = GenderDemo["Repeat Percentage"].map('{:.1%}'.format)
+
+GenderDemo = GenderDemo[["Total Purchase Count","Percentage","Unique Player Count","Unique Percentage","Repeat Buy","Repeat Percentage"]]
+
 
 GenderDemo
 ```
@@ -279,8 +282,12 @@ GenderDemo
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>Count</th>
+      <th>Total Purchase Count</th>
       <th>Percentage</th>
+      <th>Unique Player Count</th>
+      <th>Unique Percentage</th>
+      <th>Repeat Buy</th>
+      <th>Repeat Percentage</th>
     </tr>
   </thead>
   <tbody>
@@ -288,16 +295,28 @@ GenderDemo
       <th>Male</th>
       <td>652</td>
       <td>83.6%</td>
+      <td>484</td>
+      <td>84.0%</td>
+      <td>168</td>
+      <td>25.8%</td>
     </tr>
     <tr>
       <th>Female</th>
       <td>113</td>
       <td>14.5%</td>
+      <td>81</td>
+      <td>14.1%</td>
+      <td>32</td>
+      <td>28.3%</td>
     </tr>
     <tr>
       <th>Other / Non-Disclosed</th>
       <td>15</td>
       <td>1.9%</td>
+      <td>11</td>
+      <td>1.9%</td>
+      <td>4</td>
+      <td>26.7%</td>
     </tr>
   </tbody>
 </table>
@@ -305,40 +324,33 @@ GenderDemo
 
 
 
+Table 1
+
+The table above shows us the total number of purchases based on gender, and then adds the individual player count based on gender. In other words, amongst the players of the game the vast majority is made up of Males (84%), where males also make up the largest percentage of sales (83.6%). However, when considereing repeat buys, Females are more likely to buy a product again than the Male counterpart. This tells us that Males are a strong target market for the game and its products, while Females make the most "loyal" customers. 
+
 
 ## Purchasing Analysis (Gender)
-
-* Run basic calculations to obtain purchase count, avg. purchase price, etc. by gender
-
-
-* For normalized purchasing, divide total purchase value by purchase count, by gender
-
-
-* Create a summary data frame to hold the results
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display the summary data frame
 
 
 ```python
 GenderGroup = GameDF.groupby(["Gender"])
 GenTotalPurchase = GenderGroup["Price"].sum()
-GenAvgPurchase = GenderGroup["Price"].mean()
-GenNormalize = GenTotalPurchase/GenderVCount
+GenAvgPurchase = GenTotalPurchase/ UniqueGenCount
+
+MaxGender = GenderGroup["Price"].max()
+MinGender = GenderGroup["Price"].min()
+GenNormalize = GenTotalPurchase/ GenderVCount
 
 GenderAnalysis = pd.DataFrame({ "Purchase Count": GenderVCount,
                                 "Average Purchase": GenAvgPurchase,
                                 "Total Purchase": GenTotalPurchase,
-                                "Normalized Value": GenNormalize})
+                                "Normalized Avg": GenNormalize})
 
 GenderAnalysis["Average Purchase"] = GenderAnalysis["Average Purchase"].map('${:,.2f}'.format)
 GenderAnalysis["Total Purchase"] = GenderAnalysis["Total Purchase"].map('${:,.2f}'.format)
-GenderAnalysis["Normalized Value"] = GenderAnalysis["Normalized Value"].map('${:,.2f}'.format)
+GenderAnalysis["Normalized Avg"] = GenderAnalysis["Normalized Avg"].map('${:,.2f}'.format)
 
-GenderAnalysis = GenderAnalysis[["Purchase Count","Average Purchase","Total Purchase","Normalized Value"]]
+GenderAnalysis = GenderAnalysis[["Purchase Count","Total Purchase","Average Purchase","Normalized Avg"]]
 
 
 GenderAnalysis
@@ -367,31 +379,31 @@ GenderAnalysis
     <tr style="text-align: right;">
       <th></th>
       <th>Purchase Count</th>
-      <th>Average Purchase</th>
       <th>Total Purchase</th>
-      <th>Normalized Value</th>
+      <th>Average Purchase</th>
+      <th>Normalized Avg</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>Female</th>
       <td>113</td>
-      <td>$3.20</td>
       <td>$361.94</td>
+      <td>$4.47</td>
       <td>$3.20</td>
     </tr>
     <tr>
       <th>Male</th>
       <td>652</td>
-      <td>$3.02</td>
       <td>$1,967.64</td>
+      <td>$4.07</td>
       <td>$3.02</td>
     </tr>
     <tr>
       <th>Other / Non-Disclosed</th>
       <td>15</td>
-      <td>$3.35</td>
       <td>$50.19</td>
+      <td>$4.56</td>
       <td>$3.35</td>
     </tr>
   </tbody>
@@ -400,41 +412,44 @@ GenderAnalysis
 
 
 
+Table 2
+
+The table above shows us Males again make up the vast majority of purchase value. However an individual Female on average spends about $4.47, with each purchase averaging to $3.20. Which is higher than her counterparts, Male($4.07, $3.02) and Other($4.56, $3.35) respectively. Thus combining the results from Table 1 and Table 2, it shows that Females are likely to spend more, and be more loyal customers in terms of repeat buys. 
+
 ## Age Demographics
-
-* Establish bins for ages
-
-
-* Categorize the existing players using the age bins. Hint: use pd.cut()
-
-
-* Calculate the numbers and percentages by age group
-
-
-* Create a summary data frame to hold the results
-
-
-* Optional: round the percentage column to two decimal points
-
-
-* Display Age Demographics Table
-
 
 
 ```python
-# Establish bins for ages
+# Establish bins for ages, and pd.cut() for making the list
 age_bins = [0, 9.90, 14.90, 19.90, 24.90, 29.90, 34.90, 39.90, 99999]
 group_names = ["<10", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40+"]
 
+# Adding a list called Age Range to the origianl DF, which later will be used to groupby
 GameDF["Age Range"] = pd.cut(GameDF["Age"], age_bins, labels=group_names)
 
 AgeVCount = GameDF["Age Range"].value_counts()
 AgePercent = AgeVCount/AgeVCount.sum()
 
-AgeDemo = pd.DataFrame({"Count": AgeVCount,
-                        "Percentage": AgePercent}) 
+UniqueAge = GameDF.drop_duplicates("SN")
+UniqueAgeCount = UniqueAge["Age Range"].value_counts()
+UniqueAgePercent = UniqueAgeCount/len(TotalPlayers)
+
+RepeatAgeBuy = AgeVCount-UniqueAgeCount
+RepeatAgePercent = RepeatAgeBuy/AgeVCount
+
+
+AgeDemo = pd.DataFrame({"Total Count": AgeVCount,
+                        "Percentage": AgePercent,
+                        "Unique Player Count": UniqueAgeCount,
+                        "Unique Percentage": UniqueAgePercent,
+                        "Repeat Buy": RepeatAgeBuy,
+                        "Repeat Percentage": RepeatAgePercent}) 
 
 AgeDemo["Percentage"] = AgeDemo["Percentage"].map('{:.1%}'.format)
+AgeDemo["Unique Percentage"] = AgeDemo["Unique Percentage"].map('{:.1%}'.format)
+AgeDemo["Repeat Percentage"] = AgeDemo["Repeat Percentage"].map('{:.1%}'.format)
+
+AgeDemo = AgeDemo[["Total Count","Percentage","Unique Player Count","Unique Percentage","Repeat Buy","Repeat Percentage"]]
 
 AgeDemo
 ```
@@ -460,8 +475,12 @@ AgeDemo
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>Count</th>
+      <th>Total Count</th>
       <th>Percentage</th>
+      <th>Unique Player Count</th>
+      <th>Unique Percentage</th>
+      <th>Repeat Buy</th>
+      <th>Repeat Percentage</th>
     </tr>
   </thead>
   <tbody>
@@ -469,41 +488,73 @@ AgeDemo
       <th>20-24</th>
       <td>365</td>
       <td>46.8%</td>
+      <td>258</td>
+      <td>44.8%</td>
+      <td>107</td>
+      <td>29.3%</td>
     </tr>
     <tr>
       <th>15-19</th>
       <td>136</td>
       <td>17.4%</td>
+      <td>107</td>
+      <td>18.6%</td>
+      <td>29</td>
+      <td>21.3%</td>
     </tr>
     <tr>
       <th>25-29</th>
       <td>101</td>
       <td>12.9%</td>
+      <td>77</td>
+      <td>13.4%</td>
+      <td>24</td>
+      <td>23.8%</td>
     </tr>
     <tr>
       <th>30-34</th>
       <td>73</td>
       <td>9.4%</td>
+      <td>52</td>
+      <td>9.0%</td>
+      <td>21</td>
+      <td>28.8%</td>
     </tr>
     <tr>
       <th>35-39</th>
       <td>41</td>
       <td>5.3%</td>
+      <td>31</td>
+      <td>5.4%</td>
+      <td>10</td>
+      <td>24.4%</td>
     </tr>
     <tr>
       <th>10-14</th>
       <td>28</td>
       <td>3.6%</td>
+      <td>22</td>
+      <td>3.8%</td>
+      <td>6</td>
+      <td>21.4%</td>
     </tr>
     <tr>
       <th>&lt;10</th>
       <td>23</td>
       <td>2.9%</td>
+      <td>17</td>
+      <td>3.0%</td>
+      <td>6</td>
+      <td>26.1%</td>
     </tr>
     <tr>
       <th>40+</th>
       <td>13</td>
       <td>1.7%</td>
+      <td>12</td>
+      <td>2.1%</td>
+      <td>1</td>
+      <td>7.7%</td>
     </tr>
   </tbody>
 </table>
@@ -511,42 +562,32 @@ AgeDemo
 
 
 
+Table 3
+
+By grouping the dataset into age ranges, it can give insight as to what age range is best the best and most loyal range. Table 3 shows us that 20-24 year olds make up the largest percentage of 44.8%, followed by 15-19 year olds (18.6%) and 25-29 year olds (13.4%). 20-24 year olds also make up the largest percentage of repeat buys (29.3%), making them the most loyal age range, followed by the 30-34 age range (28.8%). Hence showing 20-24 year olds to be the largest and most loyal players, making them the primary target age range. 
+
 ## Purchasing Analysis (Age)
-
-* Bin the purchase_data data frame by age
-
-
-* Run basic calculations to obtain purchase count, avg. purchase price, etc. in the table below
-
-
-* Calculate Normalized Purchasing
-
-
-* Create a summary data frame to hold the results
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display the summary data frame
 
 
 ```python
 AgeGroup = GameDF.groupby(["Age Range"])
 AgeTotalPurchase = AgeGroup["Price"].sum()
-AgeAvgPurchase = AgeGroup["Price"].mean()
+AgeAvgPurchase = AgeTotalPurchase/UniqueAgeCount
 AgeNormalize = AgeTotalPurchase/AgeVCount
 
 AgeAnalysis = pd.DataFrame({ "Purchase Count": AgeVCount,
                                 "Average Purchase": AgeAvgPurchase,
                                 "Total Purchase": AgeTotalPurchase,
-                                "Normalized Value": AgeNormalize})
+                                "Normalized Avg": AgeNormalize})
+
+# Sorting the Table based on criteria, which has to happen before formatting the dataframe
+AgeAnalysis = AgeAnalysis.sort_values("Average Purchase", ascending=False)
 
 AgeAnalysis["Average Purchase"] = AgeAnalysis["Average Purchase"].map('${:,.2f}'.format)
 AgeAnalysis["Total Purchase"] = AgeAnalysis["Total Purchase"].map('${:,.2f}'.format)
-AgeAnalysis["Normalized Value"] = AgeAnalysis["Normalized Value"].map('${:,.2f}'.format)
+AgeAnalysis["Normalized Avg"] = AgeAnalysis["Normalized Avg"].map('${:,.2f}'.format)
 
-AgeAnalysis = AgeAnalysis[["Purchase Count","Average Purchase","Total Purchase","Normalized Value"]]
+AgeAnalysis = AgeAnalysis[["Purchase Count","Total Purchase","Average Purchase","Normalized Avg"]]
 AgeAnalysis
 ```
 
@@ -572,67 +613,67 @@ AgeAnalysis
     <tr style="text-align: right;">
       <th></th>
       <th>Purchase Count</th>
-      <th>Average Purchase</th>
       <th>Total Purchase</th>
-      <th>Normalized Value</th>
+      <th>Average Purchase</th>
+      <th>Normalized Avg</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th>10-14</th>
-      <td>28</td>
-      <td>$2.96</td>
-      <td>$82.78</td>
-      <td>$2.96</td>
-    </tr>
-    <tr>
-      <th>15-19</th>
-      <td>136</td>
-      <td>$3.04</td>
-      <td>$412.89</td>
-      <td>$3.04</td>
-    </tr>
-    <tr>
-      <th>20-24</th>
-      <td>365</td>
-      <td>$3.05</td>
-      <td>$1,114.06</td>
-      <td>$3.05</td>
-    </tr>
-    <tr>
-      <th>25-29</th>
-      <td>101</td>
-      <td>$2.90</td>
-      <td>$293.00</td>
-      <td>$2.90</td>
-    </tr>
-    <tr>
-      <th>30-34</th>
-      <td>73</td>
-      <td>$2.93</td>
-      <td>$214.00</td>
-      <td>$2.93</td>
-    </tr>
-    <tr>
       <th>35-39</th>
       <td>41</td>
-      <td>$3.60</td>
       <td>$147.67</td>
+      <td>$4.76</td>
       <td>$3.60</td>
-    </tr>
-    <tr>
-      <th>40+</th>
-      <td>13</td>
-      <td>$2.94</td>
-      <td>$38.24</td>
-      <td>$2.94</td>
     </tr>
     <tr>
       <th>&lt;10</th>
       <td>23</td>
-      <td>$3.35</td>
       <td>$77.13</td>
+      <td>$4.54</td>
       <td>$3.35</td>
+    </tr>
+    <tr>
+      <th>20-24</th>
+      <td>365</td>
+      <td>$1,114.06</td>
+      <td>$4.32</td>
+      <td>$3.05</td>
+    </tr>
+    <tr>
+      <th>30-34</th>
+      <td>73</td>
+      <td>$214.00</td>
+      <td>$4.12</td>
+      <td>$2.93</td>
+    </tr>
+    <tr>
+      <th>15-19</th>
+      <td>136</td>
+      <td>$412.89</td>
+      <td>$3.86</td>
+      <td>$3.04</td>
+    </tr>
+    <tr>
+      <th>25-29</th>
+      <td>101</td>
+      <td>$293.00</td>
+      <td>$3.81</td>
+      <td>$2.90</td>
+    </tr>
+    <tr>
+      <th>10-14</th>
+      <td>28</td>
+      <td>$82.78</td>
+      <td>$3.76</td>
+      <td>$2.96</td>
+    </tr>
+    <tr>
+      <th>40+</th>
+      <td>13</td>
+      <td>$38.24</td>
+      <td>$3.19</td>
+      <td>$2.94</td>
     </tr>
   </tbody>
 </table>
@@ -640,23 +681,11 @@ AgeAnalysis
 
 
 
+Table 4
+
+Table 4 shows us that although 20-24 year olds spend the most as a total, individually 35-39 year olds spend the most on average being $4.76 with an average of $3.60 for each purchase. Making them the highest spenders, though important to keep in mind they have a fairly low total purchase value and constitute for only 5% of the demographic. 
+
 ## Top Spenders
-
-* Run basic calculations to obtain the results in the table below
-
-
-* Create a summary data frame to hold the results
-
-
-* Sort the total purchase value column in descending order
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display a preview of the summary data frame
-
-
 
 
 ```python
@@ -670,6 +699,7 @@ TopTable = pd.DataFrame({   "Purchase Count": TopCount,
                             "Total Purchase": TopTotalPurchase
                             })
 
+# Sorting the Table based on criteria, which has to happen before formatting the dataframe
 TopTable = TopTable.sort_values("Total Purchase", ascending=False)
 
 TopTable["Average Purchase"] = TopTable["Average Purchase"].map('${:,.2f}'.format)
@@ -677,8 +707,17 @@ TopTable["Total Purchase"] = TopTable["Total Purchase"].map('${:,.2f}'.format)
 
 TopTable = TopTable[["Purchase Count","Average Purchase","Total Purchase"]]
 
+print(TopTable["Purchase Count"].value_counts())
 TopTable.head(10)
 ```
+
+    1    414
+    2    124
+    3     35
+    4      2
+    5      1
+    Name: Purchase Count, dtype: int64
+
 
 
 
@@ -779,26 +818,11 @@ TopTable.head(10)
 
 
 
+Table 5
+
+This shows us that the most number of repeat buys is 5, coming from Lisosia93. The relationship between Repeat buys(Purchase Count) and its count seems to behave like an exponential decay function. Where one buy consitiutes for a count of 414, and 5 buys for only 1 occurance. 
+
 ## Most Popular Items
-
-* Retrieve the Item ID, Item Name, and Item Price columns
-
-
-* Group by Item ID and Item Name. Perform calculations to obtain purchase count, item price, and total purchase value
-
-
-* Create a summary data frame to hold the results
-
-
-* Sort the purchase count column in descending order
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display a preview of the summary data frame
-
-
 
 
 ```python
@@ -819,7 +843,7 @@ TopItemDF["Total Purchase"] = TopItemDF["Total Purchase"].map('${:,.2f}'.format)
 
 TopItemDF = TopItemDF[["Purchase Count","Average Purchase","Total Purchase"]]
 
-TopItemDF.head()
+TopItemDF.head(10)
 ```
 
 
@@ -892,23 +916,50 @@ TopItemDF.head()
       <td>$1.02</td>
       <td>$8.16</td>
     </tr>
+    <tr>
+      <th>103</th>
+      <th>Singed Scalpel</th>
+      <td>8</td>
+      <td>$4.35</td>
+      <td>$34.80</td>
+    </tr>
+    <tr>
+      <th>75</th>
+      <th>Brutality Ivory Warmace</th>
+      <td>8</td>
+      <td>$2.42</td>
+      <td>$19.36</td>
+    </tr>
+    <tr>
+      <th>72</th>
+      <th>Winter's Bite</th>
+      <td>8</td>
+      <td>$3.77</td>
+      <td>$30.16</td>
+    </tr>
+    <tr>
+      <th>60</th>
+      <th>Wolf</th>
+      <td>8</td>
+      <td>$3.54</td>
+      <td>$28.32</td>
+    </tr>
+    <tr>
+      <th>59</th>
+      <th>Lightning, Etcher of the King</th>
+      <td>8</td>
+      <td>$4.23</td>
+      <td>$33.84</td>
+    </tr>
   </tbody>
 </table>
 </div>
 
 
 
+Table 6
+
 ## Most Profitable Items
-
-* Sort the above table by total purchase value in descending order
-
-
-* Optional: give the displayed data cleaner formatting
-
-
-* Display a preview of the data frame
-
-
 
 
 ```python
@@ -919,7 +970,7 @@ TopProfitTable["Total Purchase"] = TopProfitTable["Total Purchase"].map('${:,.2f
 
 TopProfitTable = TopProfitTable[["Purchase Count","Average Purchase","Total Purchase"]]
 
-TopProfitTable.head()
+TopProfitTable.head(10)
 ```
 
 
@@ -992,8 +1043,47 @@ TopProfitTable.head()
       <td>$4.35</td>
       <td>$34.80</td>
     </tr>
+    <tr>
+      <th>59</th>
+      <th>Lightning, Etcher of the King</th>
+      <td>8</td>
+      <td>$4.23</td>
+      <td>$33.84</td>
+    </tr>
+    <tr>
+      <th>108</th>
+      <th>Extraction, Quickblade Of Trembling Hands</th>
+      <td>9</td>
+      <td>$3.53</td>
+      <td>$31.77</td>
+    </tr>
+    <tr>
+      <th>78</th>
+      <th>Glimmer, Ender of the Moon</th>
+      <td>7</td>
+      <td>$4.40</td>
+      <td>$30.80</td>
+    </tr>
+    <tr>
+      <th>72</th>
+      <th>Winter's Bite</th>
+      <td>8</td>
+      <td>$3.77</td>
+      <td>$30.16</td>
+    </tr>
+    <tr>
+      <th>60</th>
+      <th>Wolf</th>
+      <td>8</td>
+      <td>$3.54</td>
+      <td>$28.32</td>
+    </tr>
   </tbody>
 </table>
 </div>
 
 
+
+Table 7
+
+Table 6 and 7 shows us that item "Oathbreaker, Last Hope of the Breaking Storm" is the most popular with a count of 12 and the most profitible item generating $50.76. The second most popular and profitable is Nirvana with a profit of $41.22 and purchase count of 9. 
